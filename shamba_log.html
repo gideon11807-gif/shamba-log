@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Shamba Log</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --green: #1a7a4a;
+  --green-light: #e8f5ee;
+  --green-mid: #2d9e60;
+  --blue: #1a4fa0;
+  --blue-light: #e8eef9;
+  --gray: #6b6b6b;
+  --gray-light: #f4f4f2;
+  --gray-border: #e0e0dc;
+  --red: #c0392b;
+  --amber: #b85c00;
+  --amber-light: #fef4e8;
+  --text: #1a1a18;
+  --text-muted: #6b6b6b;
+  --surface: #ffffff;
+  --bg: #f7f7f5;
+  --radius: 10px;
+  --radius-lg: 14px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html { font-size: 16px; }
+body { font-family: 'Sora', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* NAV */
+.nav { background: var(--green); padding: 0; display: flex; border-bottom: 2px solid #155e38; }
+.nav-tab { flex: 1; padding: 14px 8px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.65); border: none; background: transparent; cursor: pointer; letter-spacing: 0.04em; transition: color 0.15s, background 0.15s; }
+.nav-tab.active { color: #fff; background: rgba(255,255,255,0.12); }
+
+/* LOADING SCREEN */
+.screen { display: none; padding: 1rem 0.875rem 2rem; max-width: 560px; margin: 0 auto; }
+.screen.active { display: block; }
+
+/* DAY HEADER */
+.day-header { background: var(--surface); border: 1px solid var(--gray-border); border-radius: var(--radius-lg); padding: 1rem; margin-bottom: 0.875rem; }
+.day-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 130px; }
+.field label { font-size: 11px; font-weight: 500; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; }
+.field input { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; border: 1px solid var(--gray-border); border-radius: var(--radius); padding: 8px 10px; background: var(--gray-light); color: var(--text); width: 100%; outline: none; }
+.field input:focus { border-color: var(--green); background: var(--green-light); }
+.price-note { font-size: 11px; color: var(--text-muted); margin-top: 6px; font-family: 'DM Mono', monospace; }
+
+/* VEHICLE TABS */
+.vtabs-wrap { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 0.875rem; align-items: center; scrollbar-width: none; }
+.vtabs-wrap::-webkit-scrollbar { display: none; }
+.vtab { padding: 7px 14px; font-size: 13px; font-weight: 500; font-family: 'DM Mono', monospace; border: 1px solid var(--gray-border); border-radius: 8px; background: var(--surface); color: var(--text-muted); cursor: pointer; white-space: nowrap; flex-shrink: 0; letter-spacing: 0.05em; transition: all 0.12s; }
+.vtab.active { background: var(--green); color: #fff; border-color: var(--green); }
+.vtab-add { padding: 7px 12px; font-size: 18px; line-height: 1; border: 1px dashed var(--gray-border); border-radius: 8px; background: transparent; color: var(--text-muted); cursor: pointer; flex-shrink: 0; }
+.vtab-add:hover { border-color: var(--green); color: var(--green); }
+
+/* VEHICLE PANEL */
+.vpanel { display: none; }
+.vpanel.active { display: block; }
+.plate-row { display: flex; gap: 8px; margin-bottom: 0.875rem; align-items: center; }
+.plate-inp { font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; flex: 1; border: 1px solid var(--gray-border); border-radius: var(--radius); padding: 9px 12px; background: var(--gray-light); color: var(--text); outline: none; }
+.plate-inp:focus { border-color: var(--green); background: var(--green-light); }
+.del-btn { padding: 9px 12px; font-size: 12px; font-weight: 500; border: 1px solid var(--gray-border); border-radius: var(--radius); background: transparent; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+.del-btn:hover { border-color: var(--red); color: var(--red); }
+
+/* GRADE CARDS */
+.gcard { background: var(--surface); border: 1px solid var(--gray-border); border-radius: var(--radius-lg); padding: 0.875rem 1rem; margin-bottom: 0.75rem; }
+.gcard-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.625rem; }
+.gname { font-size: 17px; font-weight: 600; }
+.gsub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.gtotal-box { text-align: right; }
+.gtotal-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.gtotal-val { font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 500; }
+.tally { display: flex; flex-wrap: wrap; gap: 5px; min-height: 36px; margin-bottom: 0.625rem; align-items: center; }
+.chip { display: flex; align-items: center; gap: 5px; background: var(--gray-light); border: 1px solid var(--gray-border); border-radius: 7px; padding: 5px 9px; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: var(--text); }
+.chip-x { cursor: pointer; color: var(--text-muted); font-size: 12px; line-height: 1; padding: 1px; border: none; background: none; }
+.chip-x:hover { color: var(--red); }
+.gcard-bot { display: flex; gap: 8px; align-items: center; }
+.add-crate { flex: 1; padding: 14px 10px; font-size: 16px; font-weight: 600; border: 1px solid var(--gray-border); border-radius: var(--radius); background: var(--gray-light); color: var(--text); cursor: pointer; transition: background 0.1s; min-height: 52px; }
+.add-crate:active { background: var(--green-light); border-color: var(--green); }
+.piriton-price { font-family: 'DM Mono', monospace; font-size: 13px; width: 120px; border: 1px solid var(--gray-border); border-radius: var(--radius); padding: 9px 10px; background: var(--gray-light); color: var(--text); outline: none; }
+.piriton-price:focus { border-color: var(--amber); background: var(--amber-light); }
+
+/* grade accent colors */
+.gcard.g1 .gname { color: var(--green); }
+.gcard.g1 .add-crate:active { background: var(--green-light); border-color: var(--green); }
+.gcard.g1 .chip { background: var(--green-light); border-color: #b2dfc5; }
+.gcard.g2 .gname { color: var(--blue); }
+.gcard.g2 .chip { background: var(--blue-light); border-color: #b2c9ee; }
+.gcard.g3 .gname { color: var(--amber); }
+.gcard.g3 .chip { background: var(--amber-light); border-color: #f5d5a8; }
+
+/* SUMMARY */
+.summary { background: var(--gray-light); border: 1px solid var(--gray-border); border-radius: var(--radius-lg); padding: 0.875rem 1rem; margin-bottom: 0.875rem; }
+.srow { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; padding: 4px 0; border-bottom: 1px solid var(--gray-border); }
+.srow:last-child { border-bottom: none; }
+.srow.big { font-size: 16px; font-weight: 600; padding-top: 10px; margin-top: 6px; border-top: 2px solid var(--gray-border); }
+.srow span:last-child { font-family: 'DM Mono', monospace; font-weight: 500; }
+.srow .slbl { color: var(--text-muted); }
+
+/* ACTIONS */
+.act-row { display: flex; gap: 8px; margin-bottom: 0.5rem; }
+.btn-save { flex: 1; padding: 15px; font-size: 16px; font-weight: 600; font-family: 'Sora', sans-serif; background: var(--green); color: #fff; border: none; border-radius: var(--radius-lg); cursor: pointer; transition: background 0.12s; }
+.btn-save:active { background: #155e38; }
+.btn-secondary { padding: 12px 14px; font-size: 13px; font-weight: 500; font-family: 'Sora', sans-serif; background: var(--surface); color: var(--text-muted); border: 1px solid var(--gray-border); border-radius: var(--radius-lg); cursor: pointer; }
+.btn-secondary:active { background: var(--gray-light); }
+
+/* TOAST */
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: #fff; padding: 10px 20px; border-radius: 100px; font-size: 13px; font-weight: 500; white-space: nowrap; opacity: 0; transition: all 0.25s; z-index: 999; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ===== LOG SCREEN ===== */
+.log-toolbar { display: flex; gap: 8px; margin-bottom: 1rem; align-items: center; }
+.log-toolbar input { flex: 1; font-family: 'DM Mono', monospace; font-size: 13px; border: 1px solid var(--gray-border); border-radius: var(--radius); padding: 8px 10px; background: var(--gray-light); color: var(--text); outline: none; }
+.log-toolbar input:focus { border-color: var(--green); }
+.log-export { padding: 8px 12px; font-size: 13px; font-weight: 500; border: 1px solid var(--gray-border); border-radius: var(--radius); background: var(--surface); color: var(--text-muted); cursor: pointer; }
+
+.session-card { background: var(--surface); border: 1px solid var(--gray-border); border-radius: var(--radius-lg); padding: 0.875rem 1rem; margin-bottom: 0.75rem; }
+.session-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.session-date { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; color: var(--text); }
+.session-grand { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; color: var(--green); }
+.session-vehicles { display: flex; flex-direction: column; gap: 5px; }
+.sv-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--gray-border); }
+.sv-row:last-child { border-bottom: none; }
+.sv-plate { font-family: 'DM Mono', monospace; font-weight: 500; letter-spacing: 0.05em; }
+.sv-detail { color: var(--text-muted); }
+.session-actions { display: flex; gap: 8px; margin-top: 8px; }
+.sess-btn { padding: 6px 12px; font-size: 12px; font-weight: 500; border: 1px solid var(--gray-border); border-radius: 7px; background: transparent; color: var(--text-muted); cursor: pointer; }
+.sess-btn.danger { color: var(--red); border-color: #f5c2be; }
+.sess-btn:hover { background: var(--gray-light); }
+
+.empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); font-size: 14px; }
+.empty-icon { font-size: 32px; margin-bottom: 0.5rem; }
+
+/* SHARE modal faux */
+.share-area { background: var(--gray-light); border: 1px solid var(--gray-border); border-radius: var(--radius); padding: 0.75rem; margin-top: 8px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text); white-space: pre-wrap; line-height: 1.6; display: none; }
+.share-area.open { display: block; }
+
+@media print {
+  .nav, .vtabs-wrap, .act-row, .plate-row .del-btn, .chip-x, #log-screen { display: none !important; }
+  .vpanel { display: block !important; }
+  body { background: white; }
+  .gcard, .summary, .day-header { border: 1px solid #ccc !important; break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <button class="nav-tab active" onclick="showScreen('load')">Loading</button>
+  <button class="nav-tab" onclick="showScreen('log')">Session Log</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<!-- LOADING SCREEN -->
+<div class="screen active" id="load-screen">
+  <div style="padding-top:1rem;"></div>
+  <div class="day-header">
+    <div class="day-row">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="g-date">
+      </div>
+      <div class="field">
+        <label>Nyanya price (Ksh/crate)</label>
+        <input type="number" id="g-p1" placeholder="e.g. 1200" min="0" oninput="renderPanels()">
+      </div>
+    </div>
+    <div class="price-note" id="price-note"></div>
+  </div>
+
+  <div class="vtabs-wrap" id="vtabs">
+    <button class="vtab-add" onclick="addVehicle()" title="Add vehicle">+</button>
+  </div>
+  <div id="panels"></div>
+</div>
+
+<!-- LOG SCREEN -->
+<div class="screen" id="log-screen">
+  <div style="padding-top:1rem;"></div>
+  <div class="log-toolbar">
+    <input type="text" id="log-search" placeholder="Search by date or plate..." oninput="renderLog()">
+    <button class="log-export" onclick="backupData()" title="Download all data as a backup file">Backup</button>
+    <button class="log-export" onclick="restoreData()" title="Restore from a backup file">Restore</button>
+    <button class="log-export" onclick="exportCSV()">CSV</button>
+  </div>
+  <div id="log-list"></div>
+</div>
+
+<script>
+let vehicles = [];
+let activeVid = null;
+let sessions = [];
+
+try { sessions = JSON.parse(localStorage.getItem('shambaLog_sessions') || '[]'); } catch(e) {}
+
+function save() {
+  try { localStorage.setItem('shambaLog_sessions', JSON.stringify(sessions)); } catch(e) {}
+}
+
+function fmt(n) { return Math.round(n).toLocaleString('en-KE'); }
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(name + '-screen').classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'log') renderLog();
+}
+
+function getP1() { return parseFloat(document.getElementById('g-p1').value) || 0; }
+function getP2() { return Math.round(getP1() / 2); }
+function getVehicle(id) { return vehicles.find(v => v.id === id); }
+
+function addVehicle() {
+  const id = 'v' + Date.now();
+  vehicles.push({ id, plate: '', p3: 0, counts: { 1: [], 2: [], 3: [] } });
+  renderTabs();
+  setActive(id);
+}
+
+function delVehicle(id) {
+  if (!confirm('Remove this vehicle from the current session?')) return;
+  vehicles = vehicles.filter(v => v.id !== id);
+  activeVid = vehicles.length ? vehicles[vehicles.length - 1].id : null;
+  renderTabs();
+  renderPanels();
+}
+
+function setActive(id) {
+  activeVid = id;
+  renderPanels();
+  renderTabs();
+}
+
+function renderTabs() {
+  const row = document.getElementById('vtabs');
+  const addBtn = row.querySelector('.vtab-add');
+  row.querySelectorAll('.vtab').forEach(t => t.remove());
+  vehicles.forEach(v => {
+    const t = document.createElement('button');
+    t.className = 'vtab' + (v.id === activeVid ? ' active' : '');
+    t.dataset.vid = v.id;
+    const total = v.counts[1].length + v.counts[2].length + v.counts[3].length;
+    t.textContent = (v.plate || 'New') + (total ? ' (' + total + ')' : '');
+    t.onclick = () => setActive(v.id);
+    row.insertBefore(t, addBtn);
+  });
+}
+
+function renderPanels() {
+  const p1 = getP1(), p2 = getP2();
+  const note = document.getElementById('price-note');
+  note.textContent = p1 ? 'Burungu auto-price: Ksh ' + fmt(p2) + '/crate' : '';
+
+  const container = document.getElementById('panels');
+  container.innerHTML = '';
+  vehicles.forEach(v => {
+    const div = document.createElement('div');
+    div.className = 'vpanel' + (v.id === activeVid ? ' active' : '');
+    div.dataset.vid = v.id;
+    div.innerHTML = buildPanel(v, p1, p2);
+    container.appendChild(div);
+  });
+}
+
+function buildPanel(v, p1, p2) {
+  const c1 = v.counts[1].length, c2 = v.counts[2].length, c3 = v.counts[3].length;
+  const a1 = c1 * p1, a2 = c2 * p2, a3 = c3 * (v.p3 || 0);
+  const grandCrates = c1 + c2 + c3;
+  const grandAmt = a1 + a2 + a3;
+
+  function chips(g) {
+    return v.counts[g].map((n, i) =>
+      `<div class="chip"><span>${n}</span><button class="chip-x" onclick="delCrate('${v.id}',${g},${i})">×</button></div>`
+    ).join('');
+  }
+
+  return `
+<div class="plate-row">
+  <input class="plate-inp" placeholder="Plate e.g. KBC 123A" value="${v.plate}"
+    oninput="updatePlate('${v.id}',this.value)" maxlength="12">
+  <button class="del-btn" onclick="delVehicle('${v.id}')">Remove</button>
+</div>
+
+<div class="gcard g1">
+  <div class="gcard-top">
+    <div><div class="gname">Nyanya</div><div class="gsub">Grade 1${p1 ? ' · Ksh ' + fmt(p1) + '/crate' : ''}</div></div>
+    <div class="gtotal-box"><div class="gtotal-lbl">Loaded</div><div class="gtotal-val">${c1}</div></div>
+  </div>
+  <div class="tally">${chips(1)}</div>
+  <div class="gcard-bot"><button class="add-crate" onclick="addCrate('${v.id}',1)">+ Nyanya crate</button></div>
+</div>
+
+<div class="gcard g2">
+  <div class="gcard-top">
+    <div><div class="gname">Burungu</div><div class="gsub">Grade 2 · half price${p2 ? ' · Ksh ' + fmt(p2) + '/crate' : ''}</div></div>
+    <div class="gtotal-box"><div class="gtotal-lbl">Loaded</div><div class="gtotal-val">${c2}</div></div>
+  </div>
+  <div class="tally">${chips(2)}</div>
+  <div class="gcard-bot"><button class="add-crate" onclick="addCrate('${v.id}',2)">+ Burungu crate</button></div>
+</div>
+
+<div class="gcard g3">
+  <div class="gcard-top">
+    <div><div class="gname">Piriton</div><div class="gsub">Grade 3 · negotiated price</div></div>
+    <div class="gtotal-box"><div class="gtotal-lbl">Loaded</div><div class="gtotal-val">${c3}</div></div>
+  </div>
+  <div class="tally">${chips(3)}</div>
+  <div class="gcard-bot">
+    <button class="add-crate" onclick="addCrate('${v.id}',3)">+ Piriton crate</button>
+    <input class="piriton-price" type="number" placeholder="Piriton Ksh" min="0"
+      value="${v.p3 || ''}" oninput="updateP3('${v.id}',this.value)">
+  </div>
+</div>
+
+<div class="summary">
+  <div class="srow"><span class="slbl">Nyanya</span><span>${c1} crate${c1!==1?'s':''}${p1 ? ' = Ksh ' + fmt(a1) : ''}</span></div>
+  <div class="srow"><span class="slbl">Burungu</span><span>${c2} crate${c2!==1?'s':''}${p2 ? ' = Ksh ' + fmt(a2) : ''}</span></div>
+  <div class="srow"><span class="slbl">Piriton</span><span>${c3} crate${c3!==1?'s':''}${v.p3 ? ' = Ksh ' + fmt(a3) : ''}</span></div>
+  <div class="srow big"><span>Total</span><span>${grandCrates} crates${p1 ? ' · Ksh ' + fmt(grandAmt) : ''}</span></div>
+</div>
+
+<div class="act-row">
+  <button class="btn-save" onclick="saveSession('${v.id}')">Save to log</button>
+  <button class="btn-secondary" onclick="shareText('${v.id}')">Share</button>
+  <button class="btn-secondary" onclick="window.print()">Print</button>
+</div>
+<div class="share-area" id="share-${v.id}"></div>
+<div style="height:1rem;"></div>`;
+}
+
+function autoSave(vid) {
+  const v = getVehicle(vid); if (!v) return;
+  const p1 = getP1(), p2 = getP2();
+  const date = document.getElementById('g-date').value || new Date().toISOString().split('T')[0];
+  const c1 = v.counts[1].length, c2 = v.counts[2].length, c3 = v.counts[3].length;
+  const a1 = c1*p1, a2 = c2*p2, a3 = c3*(v.p3||0);
+  const vData = { plate: v.plate||'Unknown', nyanya:c1, burungu:c2, piriton:c3, total:c1+c2+c3, p1, p2, p3:v.p3||0, amount:a1+a2+a3, savedAt:new Date().toISOString() };
+  let session = sessions.find(s => s.date === date);
+  if (session) {
+    const vi = session.vehicles.findIndex(vv => vv.plate === vData.plate);
+    if (vi >= 0) session.vehicles[vi] = vData; else session.vehicles.push(vData);
+  } else { session = {date, p1, vehicles:[vData]}; sessions.push(session); }
+  session.grandTotal = session.vehicles.reduce((s,vv)=>s+vv.total,0);
+  session.grandAmount = session.vehicles.reduce((s,vv)=>s+vv.amount,0);
+  save();
+}
+
+function addCrate(vid, g) {
+  const v = getVehicle(vid); if (!v) return;
+  v.counts[g].push(v.counts[g].length + 1);
+  autoSave(vid);
+  renderPanels(); renderTabs();
+}
+
+function delCrate(vid, g, idx) {
+  const v = getVehicle(vid); if (!v) return;
+  v.counts[g].splice(idx, 1);
+  v.counts[g] = v.counts[g].map((_, i) => i + 1);
+  autoSave(vid);
+  renderPanels();
+}
+
+function updatePlate(vid, val) {
+  const v = getVehicle(vid); if (!v) return;
+  v.plate = val.toUpperCase();
+  renderTabs();
+}
+
+function updateP3(vid, val) {
+  const v = getVehicle(vid); if (!v) return;
+  v.p3 = parseFloat(val) || 0;
+  autoSave(vid);
+  renderPanels();
+}
+
+function backupData() {
+  if (!sessions.length) { toast('No data to backup yet'); return; }
+  const blob = new Blob([JSON.stringify(sessions, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().split('T')[0];
+  a.href = url; a.download = 'shambalog_backup_' + date + '.json'; a.click();
+  URL.revokeObjectURL(url);
+  toast('Backup downloaded');
+}
+
+function restoreData() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!Array.isArray(data)) throw new Error('Invalid format');
+        if (!confirm('This will merge ' + data.length + ' sessions into your existing data. Continue?')) return;
+        data.forEach(incoming => {
+          const existing = sessions.find(s => s.date === incoming.date);
+          if (existing) {
+            incoming.vehicles.forEach(iv => {
+              const vi = existing.vehicles.findIndex(vv => vv.plate === iv.plate);
+              if (vi >= 0) existing.vehicles[vi] = iv; else existing.vehicles.push(iv);
+            });
+            existing.grandTotal = existing.vehicles.reduce((s,vv)=>s+vv.total,0);
+            existing.grandAmount = existing.vehicles.reduce((s,vv)=>s+vv.amount,0);
+          } else { sessions.push(incoming); }
+        });
+        save(); renderLog();
+        toast('Restored ' + data.length + ' sessions');
+      } catch(err) { toast('Could not read backup file'); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function saveSession(vid) {
+  const v = getVehicle(vid); if (!v) return;
+  const p1 = getP1(), p2 = getP2();
+  const date = document.getElementById('g-date').value || new Date().toISOString().split('T')[0];
+  const c1 = v.counts[1].length, c2 = v.counts[2].length, c3 = v.counts[3].length;
+  const a1 = c1 * p1, a2 = c2 * p2, a3 = c3 * (v.p3 || 0);
+
+  const vData = {
+    plate: v.plate || 'Unknown',
+    nyanya: c1, burungu: c2, piriton: c3,
+    total: c1 + c2 + c3,
+    p1, p2, p3: v.p3 || 0,
+    amount: a1 + a2 + a3,
+    savedAt: new Date().toISOString()
+  };
+
+  let session = sessions.find(s => s.date === date);
+  if (session) {
+    const vi = session.vehicles.findIndex(vv => vv.plate === vData.plate);
+    if (vi >= 0) session.vehicles[vi] = vData; else session.vehicles.push(vData);
+  } else {
+    session = { date, p1, vehicles: [vData] };
+    sessions.push(session);
+  }
+  session.grandTotal = session.vehicles.reduce((s, vv) => s + vv.total, 0);
+  session.grandAmount = session.vehicles.reduce((s, vv) => s + vv.amount, 0);
+  save();
+  toast('Saved — ' + (v.plate || 'vehicle') + ' · ' + (c1 + c2 + c3) + ' crates');
+}
+
+function shareText(vid) {
+  const v = getVehicle(vid); if (!v) return;
+  const p1 = getP1(), p2 = getP2();
+  const date = document.getElementById('g-date').value || new Date().toISOString().split('T')[0];
+  const c1 = v.counts[1].length, c2 = v.counts[2].length, c3 = v.counts[3].length;
+  const a1 = c1 * p1, a2 = c2 * p2, a3 = c3 * (v.p3 || 0);
+  const text = `SHAMBA LOG — ${date}
+Plate: ${v.plate || 'N/A'}
+─────────────────
+Nyanya  : ${c1} crates${p1 ? ' = Ksh ' + fmt(a1) : ''}
+Burungu : ${c2} crates${p2 ? ' = Ksh ' + fmt(a2) : ''}
+Piriton : ${c3} crates${v.p3 ? ' = Ksh ' + fmt(a3) : ''}
+─────────────────
+TOTAL   : ${c1+c2+c3} crates${p1 ? ' = Ksh ' + fmt(a1+a2+a3) : ''}`;
+
+  const area = document.getElementById('share-' + vid);
+  if (area) {
+    area.textContent = text;
+    area.classList.toggle('open');
+    if (area.classList.contains('open')) {
+      if (navigator.share) {
+        navigator.share({ title: 'Shamba Log', text }).catch(() => {});
+        area.classList.remove('open');
+      } else {
+        navigator.clipboard && navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard'));
+      }
+    }
+  }
+}
+
+function renderLog() {
+  const q = (document.getElementById('log-search').value || '').toLowerCase();
+  const list = document.getElementById('log-list');
+  const filtered = sessions.slice().reverse().filter(s => {
+    if (!q) return true;
+    return s.date.includes(q) || s.vehicles.some(v => v.plate.toLowerCase().includes(q));
+  });
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div>' + (q ? 'No results found.' : 'No saved sessions yet.') + '</div></div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(s => {
+    const realIdx = sessions.indexOf(s);
+    const vRows = s.vehicles.map(v =>
+      `<div class="sv-row">
+        <span class="sv-plate">${v.plate}</span>
+        <span class="sv-detail">${v.nyanya}N · ${v.burungu}B · ${v.piriton}P = ${v.total} crates${v.amount ? ' · Ksh ' + fmt(v.amount) : ''}</span>
+      </div>`
+    ).join('');
+    return `<div class="session-card">
+      <div class="session-top">
+        <span class="session-date">${s.date}</span>
+        <span class="session-grand">${s.grandTotal} crates${s.grandAmount ? ' · Ksh ' + fmt(s.grandAmount) : ''}</span>
+      </div>
+      <div class="session-vehicles">${vRows}</div>
+      <div class="session-actions">
+        <button class="sess-btn" onclick="shareSession(${realIdx})">Share day</button>
+        <button class="sess-btn danger" onclick="deleteSession(${realIdx})">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function shareSession(idx) {
+  const s = sessions[idx]; if (!s) return;
+  let text = `SHAMBA LOG — ${s.date}\n`;
+  text += '─'.repeat(28) + '\n';
+  s.vehicles.forEach(v => {
+    text += `${v.plate}\n  Nyanya: ${v.nyanya}  Burungu: ${v.burungu}  Piriton: ${v.piriton}\n`;
+    if (v.amount) text += `  Amount: Ksh ${fmt(v.amount)}\n`;
+  });
+  text += '─'.repeat(28) + '\n';
+  text += `TOTAL: ${s.grandTotal} crates`;
+  if (s.grandAmount) text += ` · Ksh ${fmt(s.grandAmount)}`;
+
+  if (navigator.share) {
+    navigator.share({ title: 'Shamba Log ' + s.date, text }).catch(() => {});
+  } else {
+    navigator.clipboard && navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard'));
+  }
+}
+
+function deleteSession(idx) {
+  if (!confirm('Delete this session? This cannot be undone.')) return;
+  sessions.splice(idx, 1);
+  save();
+  renderLog();
+  toast('Session deleted');
+}
+
+function exportCSV() {
+  if (!sessions.length) { toast('No sessions to export'); return; }
+  let csv = 'Date,Plate,Nyanya,Burungu,Piriton,Total Crates,Nyanya Price,Burungu Price,Piriton Price,Amount\n';
+  sessions.forEach(s => {
+    s.vehicles.forEach(v => {
+      csv += `${s.date},${v.plate},${v.nyanya},${v.burungu},${v.piriton},${v.total},${v.p1||''},${v.p2||''},${v.p3||''},${v.amount||''}\n`;
+    });
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'shamba_log.csv'; a.click();
+  URL.revokeObjectURL(url);
+  toast('CSV downloaded');
+}
+
+document.getElementById('g-date').value = new Date().toISOString().split('T')[0];
+addVehicle();
+</script>
+</body>
+</html>
