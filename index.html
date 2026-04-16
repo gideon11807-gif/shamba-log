@@ -182,6 +182,7 @@ body { font-family: 'Sora', sans-serif; background: var(--bg); color: var(--text
   <div style="padding-top:1rem;"></div>
   <div class="log-toolbar">
     <input type="text" id="log-search" placeholder="Search by date or plate..." oninput="renderLog()">
+    <button class="log-export" onclick="loadFromSupabase()" title="Sync from cloud">Sync</button>
     <button class="log-export" onclick="backupData()" title="Download all data as a backup file">Backup</button>
     <button class="log-export" onclick="restoreData()" title="Restore from a backup file">Restore</button>
     <button class="log-export" onclick="exportCSV()">CSV</button>
@@ -190,14 +191,80 @@ body { font-family: 'Sora', sans-serif; background: var(--bg); color: var(--text
 </div>
 
 <script>
+const SUPA_URL = 'https://elkmesxmpyguhfolopcr.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsa21lc3htcHlndWhmb2xvcGNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMjc5MDQsImV4cCI6MjA5MTYwMzkwNH0.6k1ATLmgH13_Ac_Ghdf3gBoCeWq72Vto1oIHjvZPCEI';
+const HEADERS = { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY };
+
 let vehicles = [];
 let activeVid = null;
 let sessions = [];
+let online = navigator.onLine;
+let pendingSync = [];
+window.addEventListener('online', () => { online = true; syncPending(); });
+window.addEventListener('offline', () => { online = false; });
 
 try { sessions = JSON.parse(localStorage.getItem('shambaLog_sessions') || '[]'); } catch(e) {}
 
 function save() {
   try { localStorage.setItem('shambaLog_sessions', JSON.stringify(sessions)); } catch(e) {}
+}
+
+async function pushToSupabase(vData, date, p1) {
+  try {
+    const row = {
+      date, plate: vData.plate,
+      nyanya: vData.nyanya, burungu: vData.burungu, piriton: vData.piriton,
+      total_crates: vData.total,
+      nyanya_price: p1, burungu_price: vData.p2, piriton_price: vData.p3,
+      amount: vData.amount
+    };
+    const check = await fetch(SUPA_URL + '/rest/v1/sessions?date=eq.' + date + '&plate=eq.' + encodeURIComponent(vData.plate) + '&select=id', { headers: HEADERS });
+    const existing = await check.json();
+    if (existing && existing.length > 0) {
+      await fetch(SUPA_URL + '/rest/v1/sessions?date=eq.' + date + '&plate=eq.' + encodeURIComponent(vData.plate), {
+        method: 'PATCH', headers: { ...HEADERS, 'Prefer': 'return=minimal' }, body: JSON.stringify(row)
+      });
+    } else {
+      await fetch(SUPA_URL + '/rest/v1/sessions', {
+        method: 'POST', headers: { ...HEADERS, 'Prefer': 'return=minimal' }, body: JSON.stringify(row)
+      });
+    }
+    return true;
+  } catch(e) { return false; }
+}
+
+async function loadFromSupabase() {
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/sessions?select=*&order=date.desc,saved_at.desc', { headers: HEADERS });
+    const rows = await res.json();
+    if (!Array.isArray(rows) || !rows.length) return;
+    const grouped = {};
+    rows.forEach(r => {
+      if (!grouped[r.date]) grouped[r.date] = { date: r.date, p1: r.nyanya_price, vehicles: [], grandTotal: 0, grandAmount: 0 };
+      const existing = grouped[r.date].vehicles.find(v => v.plate === r.plate);
+      if (!existing) {
+        grouped[r.date].vehicles.push({ plate: r.plate, nyanya: r.nyanya, burungu: r.burungu, piriton: r.piriton, total: r.total_crates, p1: r.nyanya_price, p2: r.burungu_price, p3: r.piriton_price, amount: r.amount });
+        grouped[r.date].grandTotal += r.total_crates;
+        grouped[r.date].grandAmount += r.amount;
+      }
+    });
+    const cloudSessions = Object.values(grouped).sort((a,b) => a.date < b.date ? 1 : -1);
+    cloudSessions.forEach(cs => {
+      const local = sessions.find(s => s.date === cs.date);
+      if (!local) sessions.push(cs);
+    });
+    sessions.sort((a,b) => a.date < b.date ? 1 : -1);
+    save();
+    renderLog();
+    toast('Synced from cloud');
+  } catch(e) { console.log('Supabase load error:', e); }
+}
+
+function syncPending() {
+  if (!online || !pendingSync.length) return;
+  pendingSync.forEach(p => pushToSupabase(p.vData, p.date, p.p1));
+  pendingSync = [];
+  toast('Synced pending records');
 }
 
 function fmt(n) { return Math.round(n).toLocaleString('en-KE'); }
@@ -354,6 +421,11 @@ function autoSave(vid) {
   session.grandTotal = session.vehicles.reduce((s,vv)=>s+vv.total,0);
   session.grandAmount = session.vehicles.reduce((s,vv)=>s+vv.amount,0);
   save();
+  if (online) {
+    pushToSupabase(vData, date, p1);
+  } else {
+    pendingSync.push({ vData, date, p1 });
+  }
 }
 
 function addCrate(vid, g) {
@@ -566,6 +638,10 @@ function exportCSV() {
 
 document.getElementById('g-date').value = new Date().toISOString().split('T')[0];
 addVehicle();
+if (online) loadFromSupabase();
+
+// Also load from cloud when switching to log tab
+const origShowScreen = showScreen;
 </script>
 </body>
 </html>
